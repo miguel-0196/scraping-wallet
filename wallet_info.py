@@ -6,7 +6,9 @@ import json
 import datetime
 from bs4 import BeautifulSoup
 from selenium import webdriver
-
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 # Description:
 #     Scraping debank.com
@@ -51,9 +53,10 @@ def save_json_file(json_value, file_path):
 
 # Get html content
 def get_html_with_request(url):
-	time.sleep(1)
+	# time.sleep(1)
 	driver = webdriver.Chrome()
 	driver.get(url)
+	WebDriverWait(driver, 20).until(EC.visibility_of_element_located((By.XPATH, '//*[@id="Wallet"]')))
 	return driver.page_source
 
 # Parsing wallet info
