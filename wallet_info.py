@@ -59,10 +59,20 @@ def save_json_file(json_value, file_path):
 		# Write the JSON data to the file
 		json.dump(json_value, file)
 
+
+# Chrome driver instance
+def chrome_driver():
+	options = webdriver.ChromeOptions()
+	options.add_argument('--ignore-certificate-errors')
+	options.add_argument('--ignore-certificate-errors-spki-list')
+	options.add_argument('--ignore-ssl-errors')
+	options.add_argument('log-level=3')
+	options.add_argument("disable-quic")
+	return webdriver.Chrome(options=options)
+
 # Get html content
-def get_html_with_request(url, xpath = None):
+def get_html_with_request(driver, url, xpath = None):
 	# time.sleep(1)
-	driver = webdriver.Chrome()
 	driver.get(url)
 	if xpath != None:
 		WebDriverWait(driver, 10).until(EC.visibility_of_element_located((By.XPATH, xpath)))
@@ -91,6 +101,7 @@ elif os.path.isfile(input_file):
 	target_list = read_file(input_file).split('\n')
 
 # Main loop
+driver = chrome_driver()
 timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 output_file = f'output_{timestamp}.txt'
 first_loop = True
@@ -102,15 +113,18 @@ while loop_flag or first_loop:
 				continue
 
 			target_url = base_url + wallet_address
-			html = get_html_with_request(target_url, '//*[@class="UpdateButton_updateTimeNumber__9wXmw"]')
+			html = get_html_with_request(driver, target_url, '//*[@class="UpdateButton_updateTimeNumber__9wXmw"]')
 
 			soup = BeautifulSoup(html, 'html.parser')
 			bal, age = parse_wallet_info(soup)
-			print("URL:", target_url)
-			print(wallet_address, bal, age)
+			print("")
+			print(f"URL: {target_url}")
+			print(f"Bal: {bal}")
+			print(f"Age: {age}")
 			append_file(f'{wallet_address} {bal} {age}\n', output_file)
 		
 		except Exception as inst:
+			print("")
 			print("An exception occurred at", target_url)
 			save_file(html, f'err-{wallet_address}.htm')
 			print(str(inst))
