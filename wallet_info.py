@@ -1,26 +1,34 @@
+# This script is for gathering wallet balance and age info with scraping.
+# i.e: https://debank.com/profile/0x00000000219ab540356cbb839cbe05303d7705fa")
+
 import os
 import re
 import sys
 import time
 import json
 import datetime
+import argparse
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-# Description:
-#     Scraping debank.com
-#     i.e: https://debank.com/profile/0x00000000219ab540356cbb839cbe05303d7705fa
-#
-#     Input: wallet address list file [default: input.txt]
-#     Output: wallets' balance and age [output.txt]
-# 
-#     Usage: --help 
-
+input_file = 'input.txt'
+loop_flag = False
 base_url = 'https://debank.com/profile/'
 
+# Parse arguments
+def parse_arguments():
+	global input_file, loop_flag
+
+	argParser = argparse.ArgumentParser()
+	argParser.add_argument("-i", "--input", help="Wallet address list file or wallet json file directory. default: input.txt")
+	argParser.add_argument("-l", "--loop", action="store_true", help="Loop iterating.")
+	args = argParser.parse_args()
+
+	input_file = args.input if args.input else 'input.txt'
+	loop_flag = args.loop if args.loop else False
 
 # Save as a file
 def save_file(text, filename = 'test.htm'):
@@ -73,32 +81,36 @@ def parse_wallet_info(soup):
 
 
 # Print usage
-if len(sys.argv) == 2 and sys.argv[1] == '--help':
-	print(f'Usage: python {os.path.basename(sys.argv[0])} <wallet-address-list-file>')
-	sys.exit(1)
+parse_arguments()
 
-# Check argument
-target_file = sys.argv[1] if len(sys.argv) == 2 else 'input.txt'
-if not os.path.isfile(target_file):
-	print("Can't find the file:", target_file)
-	sys.exit(1)    
-
+target_list = []
+if os.path.isdir(input_file):
+	target_list = [os.path.splitext(filename)[0] for filename in os.listdir(input_file)]
+elif os.path.isfile(input_file):
+	target_list = read_file(input_file).split('\n')
 
 # Main loop
-timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H-%M-%S')
+timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 output_file = f'output_{timestamp}.txt'
-while True:
-	target_list = read_file(target_file)
-	for wallet_address in target_list.split('\n'):
-		assert wallet_address.startswith('0x'), f'\nWallet address must start with 0x: {wallet_address}'
+first_loop = True
+while loop_flag or first_loop:
+	first_loop = False
+	for wallet_address in target_list:
+		try:
+			if not wallet_address.startswith('0x'):
+				continue
 
-		target_url = base_url + wallet_address
-		html = get_html_with_request(target_url)
+			target_url = base_url + wallet_address
+			html = get_html_with_request(target_url)
 
-		soup = BeautifulSoup(html, 'html.parser')
-		bal, age = parse_wallet_info(soup)
-		print("URL:", target_url)
-		print(wallet_address, bal, age)
-		append_file(f'{wallet_address} {bal} {age}\n', output_file)
-	
+			soup = BeautifulSoup(html, 'html.parser')
+			bal, age = parse_wallet_info(soup)
+			print("URL:", target_url)
+			print(wallet_address, bal, age)
+			append_file(f'{wallet_address} {bal} {age}\n', output_file)
+		
+		except Exception as inst:
+			print("An exception occurred")
+			print(str(inst))
+
 	time.sleep(3)
