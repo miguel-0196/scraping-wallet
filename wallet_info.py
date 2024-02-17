@@ -60,22 +60,23 @@ def save_json_file(json_value, file_path):
 		json.dump(json_value, file)
 
 # Get html content
-def get_html_with_request(url):
+def get_html_with_request(url, xpath = None):
 	# time.sleep(1)
 	driver = webdriver.Chrome()
 	driver.get(url)
-	WebDriverWait(driver, 20).until(EC.visibility_of_element_located((By.XPATH, '//*[@id="Wallet"]')))
+	if xpath != None:
+		WebDriverWait(driver, 10).until(EC.visibility_of_element_located((By.XPATH, xpath)))
 	return driver.page_source
 
 # Parsing wallet info
 def parse_wallet_info(soup):
 	# Find total balance
 	el1 = soup.find('div', attrs={'class': 'HeaderInfo_totalAssetInner__HyrdC'})
-	bal = re.sub(r'\+.*$', '', el1.get_text().replace('$', '').replace(',', '')) if el1 != None else ''
+	bal = re.sub(r'[\+\-].*$', '', el1.get_text().replace(',', '')) if el1 != None else '-'
 
 	# Find active date
 	el2 = soup.find('div', attrs={'class': 'db-user-tag is-age'})
-	age = el2.get_text().replace(' days', '') if el2 != None else ''
+	age = el2.get_text() if el2 != None else '-'
 	
 	return bal, age
 
@@ -101,7 +102,7 @@ while loop_flag or first_loop:
 				continue
 
 			target_url = base_url + wallet_address
-			html = get_html_with_request(target_url)
+			html = get_html_with_request(target_url, '//*[@class="UpdateButton_updateTimeNumber__9wXmw"]')
 
 			soup = BeautifulSoup(html, 'html.parser')
 			bal, age = parse_wallet_info(soup)
@@ -110,7 +111,8 @@ while loop_flag or first_loop:
 			append_file(f'{wallet_address} {bal} {age}\n', output_file)
 		
 		except Exception as inst:
-			print("An exception occurred")
+			print("An exception occurred at", target_url)
+			save_file(html, f'err-{wallet_address}.htm')
 			print(str(inst))
 
 	time.sleep(3)
