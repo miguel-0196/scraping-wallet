@@ -1,4 +1,4 @@
-*.txt
+output_*.txt
 *.htm
 *.json
 *.zip
