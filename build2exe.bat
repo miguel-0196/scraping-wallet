@@ -1,0 +1,1 @@
+pyinstaller --onefile wallet_info.py

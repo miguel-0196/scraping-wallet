@@ -100,38 +100,43 @@ if os.path.isdir(input_file):
 elif os.path.isfile(input_file):
 	target_list = read_file(input_file).split('\n')
 
-# Main loop
-timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-output_file = f'output_{timestamp}.txt'
-first_loop = True
-count = 0
-while loop_flag or first_loop:
-	first_loop = False
-	for wallet_address in target_list:
-		try:
-			if not wallet_address.startswith('0x'):
-				continue
+if len(target_list) == 0:
+	print("No input")
+else:
+	# Main loop
+	timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+	output_file = f'output_{timestamp}.txt'
+	first_loop = True
+	count = 0
+	while loop_flag or first_loop:
+		first_loop = False
+		for wallet_address in target_list:
+			try:
+				if not wallet_address.startswith('0x'):
+					continue
 
-			if count % 10 == 0:
-				driver = chrome_driver()
-			count += 1
+				if count % 10 == 0:
+					driver = chrome_driver()
+				count += 1
 
-			target_url = base_url + wallet_address
-			html = get_html_with_request(driver, target_url, '//*[@class="UpdateButton_updateTimeNumber__9wXmw"]')
+				target_url = base_url + wallet_address
+				html = get_html_with_request(driver, target_url, '//*[@class="UpdateButton_updateTimeNumber__9wXmw"]')
 
-			soup = BeautifulSoup(html, 'html.parser')
-			bal, age = parse_wallet_info(soup)
-			print("")
-			print("No", count)
-			print(f"URL: {target_url}")
-			print(f"Bal: {bal}")
-			print(f"Age: {age}")
-			append_file(f'{wallet_address} {bal} {age}\n', output_file)
-		
-		except Exception as inst:
-			print("")
-			print("An exception occurred at", target_url)
-			save_file(html, f'err-{wallet_address}.htm')
-			print(str(inst))
+				soup = BeautifulSoup(html, 'html.parser')
+				bal, age = parse_wallet_info(soup)
+				print("")
+				print("No", count)
+				print(f"URL: {target_url}")
+				print(f"Bal: {bal}")
+				print(f"Age: {age}")
+				append_file(f'{wallet_address} {bal} {age}\n', output_file)
+			
+			except Exception as inst:
+				print("")
+				if target_url != None:
+					print("An exception occurred at", target_url)
+				if html != None:
+					save_file(html, f'err-{wallet_address}.htm')
+				print(str(inst))
 
-	time.sleep(3)
+		time.sleep(3)

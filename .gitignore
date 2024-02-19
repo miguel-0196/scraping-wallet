@@ -1,4 +1,7 @@
 output_*.txt
+build
+dist
+wallet_info.spec
 *.htm
 *.json
 *.zip
