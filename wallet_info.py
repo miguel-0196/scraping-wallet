@@ -23,8 +23,8 @@ def parse_arguments():
 	global input_file, loop_flag
 
 	argParser = argparse.ArgumentParser()
-	argParser.add_argument("-i", "--input", help="Wallet address list file or wallet json file directory. default: input.txt")
-	argParser.add_argument("-l", "--loop", action="store_true", help="Loop iterating.")
+	argParser.add_argument("-i", "--input", help="Wallet address list file path or wallet json files directory path. Default: input.txt")
+	argParser.add_argument("-l", "--loop", action="store_true", help="Keep iterating.")
 	args = argParser.parse_args()
 
 	input_file = args.input if args.input else 'input.txt'
@@ -110,9 +110,11 @@ else:
 	count = 0
 	while loop_flag or first_loop:
 		first_loop = False
-		for wallet_address in target_list:
+		for line in target_list:
 			try:
-				if not wallet_address.startswith('0x'):
+				m = re.search('[0-9a-fA-F]{40}', line)
+				wallet_address = m.group(0)
+				if wallet_address == None:
 					continue
 
 				if count % 10 == 0:
@@ -129,14 +131,12 @@ else:
 				print(f"URL: {target_url}")
 				print(f"Bal: {bal}")
 				print(f"Age: {age}")
-				append_file(f'{wallet_address} {bal} {age}\n', output_file)
+				append_file(f'{wallet_address}:{bal}:{age}\n', output_file)
 			
 			except Exception as inst:
 				print("")
-				if target_url != None:
-					print("An exception occurred at", target_url)
-				if html != None:
-					save_file(html, f'err-{wallet_address}.htm')
+				print("An exception occurred at", target_url)
+				save_file(html, f'err-{wallet_address}.htm')
 				print(str(inst))
 
 		time.sleep(3)
