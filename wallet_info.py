@@ -17,13 +17,14 @@ from selenium.webdriver.support import expected_conditions as EC
 input_file = 'input.txt'
 loop_flag = False
 base_url = 'https://debank.com/profile/'
+tron_url = 'https://tronscan.org/#/address/'
 
 # Parse arguments
 def parse_arguments():
 	global input_file, loop_flag
 
 	argParser = argparse.ArgumentParser()
-	argParser.add_argument("-i", "--input", help="Wallet address list file path or wallet json files directory path. Default: input.txt")
+	argParser.add_argument("-i", "--input", help="Wallet address list file path or wallet json files directory path or wallet address. Default: input.txt")
 	argParser.add_argument("-l", "--loop", action="store_true", help="Keep iterating.")
 	args = argParser.parse_args()
 
@@ -90,6 +91,17 @@ def parse_wallet_info(soup):
 	
 	return bal, age
 
+# Parsing tron info
+def parse_tron_info(soup):
+	# Find total balance
+	el1 = soup.find('span', attrs={'class': 'address-asset-num'})
+	bal = re.sub(r'[\+\-].*$', '', el1.get_text().replace(',', '')) if el1 != None else '-'
+
+	# Find active date
+	el2 = soup.find('span', attrs={'class': 'activity-num'})
+	age = re.sub(r'[\s\:].*$', '', el2.get_text()) if el2 != None else '-'
+	
+	return bal, age
 
 # Print usage
 parse_arguments()
@@ -99,6 +111,8 @@ if os.path.isdir(input_file):
 	target_list = [os.path.splitext(filename)[0] for filename in os.listdir(input_file)]
 elif os.path.isfile(input_file):
 	target_list = read_file(input_file).split('\n')
+else:
+	target_list.append(input_file)
 
 if len(target_list) == 0:
 	print("No input")
@@ -112,20 +126,37 @@ else:
 		first_loop = False
 		for line in target_list:
 			try:
+				tron_flag = False
 				m = re.search('[0-9a-fA-F]{40}', line)
-				wallet_address = m.group(0)
-				if wallet_address == None:
-					continue
+				if m == None:
+					n = re.search('T[0-9A-Za-z]{33}', line)
+					if n == None:
+						continue
+					else:
+						tron_flag = True
+						wallet_address = n.group(0)
+				else:
+					wallet_address = m.group(0)
 
 				if count % 10 == 0:
 					driver = chrome_driver()
 				count += 1
 
-				target_url = base_url + wallet_address
-				html = get_html_with_request(driver, target_url, '//*[@class="UpdateButton_updateTimeNumber__9wXmw"]')
+				if tron_flag == True:
+					target_url = tron_url + wallet_address
+					waiting_obj = '//*[@class="address-asset-num"]'
+				else:
+					target_url = base_url + '0x' + wallet_address
+					waiting_obj = '//*[@class="UpdateButton_updateTimeNumber__9wXmw"]'
+					
+				html = get_html_with_request(driver, target_url, waiting_obj)
 
 				soup = BeautifulSoup(html, 'html.parser')
-				bal, age = parse_wallet_info(soup)
+				if tron_flag == True:
+					bal, age = parse_tron_info(soup)
+				else:
+					bal, age = parse_wallet_info(soup)
+
 				print("")
 				print("No", count)
 				print(f"URL: {target_url}")
