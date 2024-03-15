@@ -3,7 +3,6 @@
 
 import os
 import re
-import sys
 import time
 import json
 import datetime
@@ -73,10 +72,11 @@ def chrome_driver():
 
 # Get html content
 def get_html_with_request(driver, url, xpath = None):
-	# time.sleep(1)
 	driver.get(url)
 	if xpath != None:
 		WebDriverWait(driver, 10).until(EC.visibility_of_element_located((By.XPATH, xpath)))
+	else:
+		time.sleep(1)
 	return driver.page_source
 
 # Parsing wallet info
@@ -108,7 +108,7 @@ parse_arguments()
 
 target_list = []
 if os.path.isdir(input_file):
-	target_list = [os.path.splitext(filename)[0] for filename in os.listdir(input_file)]
+	target_list = os.listdir(input_file)
 elif os.path.isfile(input_file):
 	target_list = read_file(input_file).split('\n')
 else:
@@ -126,22 +126,29 @@ else:
 		first_loop = False
 		for line in target_list:
 			try:
+				if os.path.isdir('debug'):
+					print("\n\n@", line)
+
+				# Find wallet addr
 				tron_flag = False
 				m = re.search('[0-9a-fA-F]{40}', line)
-				if m == None:
-					n = re.search('T[0-9A-Za-z]{33}', line)
-					if n == None:
-						continue
-					else:
-						tron_flag = True
-						wallet_address = n.group(0)
-				else:
+				if m != None:
 					wallet_address = m.group(0)
+				else:
+					n = re.search('T[0-9A-Za-z]{33}', line)
+					if n != None:
+						wallet_address = n.group(0)
+						tron_flag = True
+					else:
+						continue
 
+				# For avoid RAM overload
 				if count % 10 == 0:
+					print("\nBrowser is initializing...")
 					driver = chrome_driver()
 				count += 1
 
+				# Scraping
 				if tron_flag == True:
 					target_url = tron_url + wallet_address
 					waiting_obj = '//*[@class="address-asset-num"]'
@@ -151,6 +158,13 @@ else:
 					
 				html = get_html_with_request(driver, target_url, waiting_obj)
 
+			except Exception as inst:
+				print("")
+				print("ERROR!", target_url)
+				print(str(inst))
+				continue
+
+			try:
 				soup = BeautifulSoup(html, 'html.parser')
 				if tron_flag == True:
 					bal, age = parse_tron_info(soup)
@@ -166,8 +180,9 @@ else:
 			
 			except Exception as inst:
 				print("")
-				print("An exception occurred at", target_url)
-				save_file(html, f'err-{wallet_address}.htm')
+				print("ERROR:", target_url)
+				if os.path.isdir('debug'):
+					save_file(html, f'debug/{wallet_address}.htm')
 				print(str(inst))
 
 		time.sleep(3)
