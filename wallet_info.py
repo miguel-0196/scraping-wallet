@@ -1,5 +1,7 @@
 # This script is for gathering wallet balance and age info with scraping.
-# i.e: https://debank.com/profile/0x00000000219ab540356cbb839cbe05303d7705fa")
+# i.e: 
+# https://debank.com/profile/0x00000000219ab540356cbb839cbe05303d7705fa
+# https://tronscan.org/#/address/TNPdqto8HiuMzoG7Vv9wyyYhWzCojLeHAF
 
 import os
 import re
@@ -7,6 +9,7 @@ import time
 import json
 import datetime
 import argparse
+
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -66,8 +69,9 @@ def chrome_driver():
 	options.add_argument('--ignore-certificate-errors')
 	options.add_argument('--ignore-certificate-errors-spki-list')
 	options.add_argument('--ignore-ssl-errors')
-	options.add_argument('log-level=3')
-	options.add_argument("disable-quic")
+	options.add_argument('--log-level=3')
+	options.add_argument('--silent')
+	options.add_argument('--disable-quic')
 	return webdriver.Chrome(options=options)
 
 # Get html content
@@ -79,7 +83,7 @@ def get_html_with_request(driver, url, xpath = None):
 		time.sleep(1)
 	return driver.page_source
 
-# Parsing wallet info
+# Parsing debank info
 def parse_wallet_info(soup):
 	# Find total balance
 	el1 = soup.find('div', attrs={'class': 'HeaderInfo_totalAssetInner__HyrdC'})
@@ -119,7 +123,7 @@ if len(target_list) == 0:
 else:
 	# Main loop
 	timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-	output_file = f'output_{timestamp}.txt'
+	output_file = f'addr_{timestamp}.txt'
 	first_loop = True
 	count = 0
 	while loop_flag or first_loop:
@@ -143,7 +147,7 @@ else:
 						continue
 
 				# For avoid RAM overload
-				if count % 10 == 0:
+				if count % 5 == 0:
 					print("\nBrowser is initializing...")
 					driver = chrome_driver()
 				count += 1
@@ -159,9 +163,12 @@ else:
 				html = get_html_with_request(driver, target_url, waiting_obj)
 
 			except Exception as inst:
+				append_file(f'{wallet_address}:ERROR:1\n', output_file)
+
 				print("")
-				print("ERROR!", target_url)
+				print("ERROR1:", target_url)
 				print(str(inst))
+
 				continue
 
 			try:
@@ -179,10 +186,15 @@ else:
 				append_file(f'{wallet_address}:{bal}:{age}\n', output_file)
 			
 			except Exception as inst:
+				append_file(f'{wallet_address}:ERROR:2\n', output_file)
+
 				print("")
-				print("ERROR:", target_url)
-				if os.path.isdir('debug'):
-					save_file(html, f'debug/{wallet_address}.htm')
+				print("ERROR2:", target_url)
 				print(str(inst))
 
-		time.sleep(3)
+				if os.path.isdir('debug'):
+					save_file(html, f'debug/{wallet_address}.htm')
+
+			time.sleep(3)
+
+		time.sleep(60)
