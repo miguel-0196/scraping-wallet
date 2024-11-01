@@ -1,1 +1,1 @@
-pyinstaller --onefile wallet_info.py
+pyinstaller --onefile wallet_info.py --hidden-import=solders
